@@ -1,22 +1,24 @@
 _G.AutoFarm = true
-_G.Team = "Marines" -- Escolha automática de time
+_G.Team = "Marines" 
 
--- LINKS RAW DO SEU GITHUB
+-- 1. TABELA DE LINKS CORRIGIDA (O erro estava aqui)
 local Links = {
     Data = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/data.lua",
     Funcs = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/funcs.lua",
     Frontend = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/frontend.lua",
     Tasks = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/tasks.lua"
-} -- O erro estava aqui, faltava fechar a chave!
+}
 
+-- 2. CARREGAMENTO DOS MÓDULOS
 local Data = loadstring(game:HttpGet(Links.Data))()
 local Funcs = loadstring(game:HttpGet(Links.Funcs))()
 local UI = loadstring(game:HttpGet(Links.Frontend))()
 local Tasks = loadstring(game:HttpGet(Links.Tasks))()
 
+-- 3. INICIALIZAÇÃO
 UI.Init()
 
--- Loop de 0.02s conforme solicitado
+-- Loop de execução
 task.spawn(function()
     while task.wait(0.02) do
         if _G.AutoFarm then
@@ -25,14 +27,13 @@ task.spawn(function()
     end
 end)
 
--- Otimização de CPU/GPU para Kaitun
+-- 4. OTIMIZAÇÃO E ANTI-AFK
 if not game:IsLoaded() then game.Loaded:Wait() end
 settings().Rendering.DrawDistanceMax = 150
 
--- Se quiser ver a UI, coloque -- antes da linha abaixo
+-- Comente a linha abaixo com -- para ver a UI
 -- game:GetService("RunService"):Set3dRenderingEnabled(false)
 
--- Anti-AFK
 local player = game.Players.LocalPlayer
 player.Idled:Connect(function()
     game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
