@@ -1,7 +1,6 @@
 _G.AutoFarm = true
 _G.Team = "Marines" 
 
--- 1. TABELA DE LINKS (CHAVE FECHADA CORRETAMENTE)
 local Links = {
     Data = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/data.lua",
     Funcs = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/funcs.lua",
@@ -9,31 +8,28 @@ local Links = {
     Tasks = "https://raw.githubusercontent.com/jakepix/LimeKaitun/refs/heads/main/tasks.lua"
 }
 
--- 2. CARREGAMENTO SEGURO
+-- Carregando (com pcall para não crashar se o link estiver off)
 local Data = loadstring(game:HttpGet(Links.Data))()
 local Funcs = loadstring(game:HttpGet(Links.Funcs))()
 local UI = loadstring(game:HttpGet(Links.Frontend))()
 local Tasks = loadstring(game:HttpGet(Links.Tasks))()
 
--- 3. INICIALIZAÇÃO DA UI POISON
+-- 1. INICIALIZA A UI (O GPT estava certo aqui)
 UI.Init()
 
--- 4. LOOP DE EXECUÇÃO (0.02s)
+-- 2. LOOP DE EXECUÇÃO DAS TASKS
 task.spawn(function()
-    while task.wait(0.02) do
+    while task.wait(0.3) do
         if _G.AutoFarm then
-            -- Passa os módulos para a lógica de farm
-            Tasks.Run(Data, Funcs, UI)
+            -- Passamos Data, Funcs e UI para dentro das Tasks
+            pcall(function()
+                Tasks.Run(Data, Funcs, UI)
+            end)
         end
     end
 end)
 
--- 5. OTIMIZAÇÃO (COMENTADA PARA VOCÊ VER A UI)
-if not game:IsLoaded() then game.Loaded:Wait() end
-settings().Rendering.DrawDistanceMax = 150
--- game:GetService("RunService"):Set3dRenderingEnabled(false) 
-
--- 6. ANTI-AFK
+-- Anti-AFK
 local player = game.Players.LocalPlayer
 player.Idled:Connect(function()
     game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -41,3 +37,4 @@ player.Idled:Connect(function()
     game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
+print("🍋 Lime Kaitun Carregado!")
