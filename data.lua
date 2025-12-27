@@ -58,8 +58,6 @@ Data.Quests = {
     {Lvl = 2375, Name = "Candy Rebel", NPC = CFrame.new(147.52, 24.79, -12775.35), Mob = CFrame.new(147.52, 24.79, -12775.35), QName = "ChocQuest2", QLvl = 2}
 }
 
-local Data = {}
-
 Data.BossConfig = {
     -- [[ SEA 1 ]]
     ["The Gorilla King"] = {
