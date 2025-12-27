@@ -1,163 +1,145 @@
 local UI = {}
-UI.Status = {Main = "IDLE", Sub = "Aguardando...", Time = tick()}
-UI.Inventory = {
-    Swords = {}, 
-    Melees = {}, -- Exemplo de inserção: {Name = "Godhuman", Mastery = 600}
-    Fruits = {},
-    Accs = {}
-}
-
-local CurrentTab = "Swords"
+local player = game.Players.LocalPlayer
 
 function UI.Init()
     local sg = Instance.new("ScreenGui", game.CoreGui)
-    sg.Name = "LimaoKaitun_Poison"
+    sg.Name = "CopoKaitun_Final"
+    sg.ResetOnSpawn = false
 
-    -- Cores Poison
-    local Color_Purple = Color3.fromRGB(142, 68, 173)
-    local Color_Green = Color3.fromRGB(46, 204, 113)
-    local Color_Bg = Color3.fromRGB(10, 10, 10)
+    -- Configuração de Cores (Azul Cobalto + Preto Dominante)
+    local Color_Ocean = Color3.fromRGB(0, 119, 182) -- Azul mais sério
+    local Color_Dark_Border = Color3.fromRGB(0, 48, 73) -- Borda discreta
+    local Color_Black = Color3.fromRGB(0, 0, 0)
 
-    -- 1. STATUS SUPERIOR (EMPILHADO)
-    local topStatus = Instance.new("Frame", sg)
-    topStatus.Size = UDim2.new(0, 440, 0, 65)
-    topStatus.Position = UDim2.new(0.5, -220, 0.15, 0)
-    topStatus.BackgroundColor3 = Color_Bg
-    topStatus.BorderColor3 = Color_Purple
-    topStatus.BorderSizePixel = 1 -- Borda fina igual CodePen
+    -- 1. FRAME PRINCIPAL (O que abre e fecha)
+    local MainHolder = Instance.new("Frame", sg)
+    MainHolder.Size = UDim2.new(1, 0, 1, 0)
+    MainHolder.BackgroundTransparency = 1
+    MainHolder.Visible = true
 
-    local mTask = Instance.new("TextLabel", topStatus)
-    mTask.Size = UDim2.new(1, -20, 0.5, 0)
-    mTask.Position = UDim2.new(0, 15, 0, 5)
-    mTask.Font = Enum.Font.GothamBold
-    mTask.TextColor3 = Color3.new(1, 1, 1)
-    mTask.TextSize = 13
-    mTask.TextXAlignment = "Left"
-    mTask.BackgroundTransparency = 1
-    mTask.RichText = true
+    -- CAIXA DE TASK (TOP BOX)
+    local TaskBox = Instance.new("Frame", MainHolder)
+    TaskBox.Size = UDim2.new(0, 320, 0, 55)
+    TaskBox.Position = UDim2.new(0.5, -160, 0.1, 0)
+    TaskBox.BackgroundColor3 = Color_Black
+    TaskBox.BackgroundTransparency = 0.3
+    TaskBox.BorderColor3 = Color_Dark_Border
+    TaskBox.BorderSizePixel = 2
 
-    local sTask = Instance.new("TextLabel", topStatus)
-    sTask.Size = UDim2.new(1, -20, 0.5, 0)
-    sTask.Position = UDim2.new(0, 15, 0.5, -5)
-    sTask.Font = Enum.Font.GothamBold
-    sTask.TextColor3 = Color3.new(1, 1, 1)
-    sTask.TextSize = 12
-    sTask.TextXAlignment = "Left"
-    sTask.BackgroundTransparency = 1
-    sTask.RichText = true
+    local TaskLabel = Instance.new("TextLabel", TaskBox)
+    TaskLabel.Size = UDim2.new(1, 0, 1, 0)
+    TaskLabel.BackgroundTransparency = 1
+    TaskLabel.Text = "Status : <font color='#0077b6'>Farm Level</font>\n<font size='10' color='#555555'>Sub: Taking Quest...</font>"
+    TaskLabel.RichText = true
+    TaskLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    TaskLabel.Font = Enum.Font.GothamBold
+    TaskLabel.TextSize = 14
 
-    -- 2. MAIN CARD
-    local mainFrame = Instance.new("Frame", sg)
-    mainFrame.Size = UDim2.new(0, 480, 0, 360)
-    mainFrame.Position = UDim2.new(0.5, -240, 0.15, 80)
-    mainFrame.BackgroundColor3 = Color_Bg
-    mainFrame.BorderColor3 = Color_Purple
-    mainFrame.BorderSizePixel = 1
+    -- PAINEL DE STATUS (MAIN CARD)
+    local MainCard = Instance.new("Frame", MainHolder)
+    MainCard.Size = UDim2.new(0, 450, 0, 280)
+    MainCard.Position = UDim2.new(0.5, -225, 0.5, -120)
+    MainCard.BackgroundColor3 = Color_Black
+    MainCard.BackgroundTransparency = 0.2
+    MainCard.BorderColor3 = Color_Dark_Border
+    MainCard.BorderSizePixel = 2
 
-    local title = Instance.new("TextLabel", mainFrame)
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.Text = "🍋 LIMAO KAITUN | <font color='#2ecc71'>POISON</font>"
-    title.RichText = true
-    title.TextColor3 = Color_Purple
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.BackgroundTransparency = 1
+    -- Espaço vazio no topo (conforme solicitado)
+    local EmptyTitle = Instance.new("Frame", MainCard)
+    EmptyTitle.Size = UDim2.new(1, 0, 0, 40)
+    EmptyTitle.BackgroundTransparency = 1
 
-    -- 3. INFO GRID (Race, Beli, etc)
-    local infoGrid = Instance.new("Frame", mainFrame)
-    infoGrid.Size = UDim2.new(0.9, 0, 0, 50)
-    infoGrid.Position = UDim2.new(0.05, 0, 0.12, 0)
-    infoGrid.BackgroundTransparency = 1
+    local Divider = Instance.new("Frame", MainCard)
+    Divider.Size = UDim2.new(0.8, 0, 0, 1)
+    Divider.Position = UDim2.new(0.1, 0, 0, 45)
+    Divider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Divider.BorderSizePixel = 0
 
-    -- 4. MENU TABS (Botões igual ao CodePen)
-    local menu = Instance.new("Frame", mainFrame)
-    menu.Size = UDim2.new(0.9, 0, 0, 30)
-    menu.Position = UDim2.new(0.05, 0, 0.3, 0)
-    menu.BackgroundTransparency = 1
-    
-    local tabLayout = Instance.new("UIListLayout", menu)
-    tabLayout.FillDirection = "Horizontal"
-    tabLayout.Padding = UDim.new(0, 5)
+    -- GRID DE STATUS 2x2
+    local StatsFrame = Instance.new("Frame", MainCard)
+    StatsFrame.Size = UDim2.new(1, -40, 0, 150)
+    StatsFrame.Position = UDim2.new(0, 20, 0, 60)
+    StatsFrame.BackgroundTransparency = 1
 
-    local function CreateTab(name)
-        local btn = Instance.new("TextButton", menu)
-        btn.Size = UDim2.new(0.24, 0, 1, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        btn.BorderColor3 = Color3.fromRGB(40, 40, 40)
-        btn.TextColor3 = Color3.fromRGB(150, 150, 150)
-        btn.Text = name:upper()
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 10
-        
-        btn.MouseButton1Click:Connect(function()
-            CurrentTab = name
-            UI.Refresh()
-        end)
+    local function CreateStat(name, pos)
+        local l = Instance.new("TextLabel", StatsFrame)
+        l.Size = UDim2.new(0.5, -10, 0, 30)
+        l.Position = pos
+        l.BackgroundTransparency = 1
+        l.Text = name .. ": <font color='#ffffff'>...</font>"
+        l.RichText = true
+        l.TextColor3 = Color3.fromRGB(85, 85, 85) -- Cor cinza para labels
+        l.Font = Enum.Font.GothamBold
+        l.TextSize = 13
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        return l
     end
 
-    CreateTab("Swords")
-    CreateTab("Melees")
-    CreateTab("Fruits")
-    CreateTab("Accs")
+    local stLvl = CreateStat("Level", UDim2.new(0, 0, 0, 0))
+    local stRace = CreateStat("Race", UDim2.new(0.5, 10, 0, 0))
+    local stBeli = CreateStat("Beli", UDim2.new(0, 0, 0, 40))
+    local stFrag = CreateStat("Frag", UDim2.new(0.5, 10, 0, 40))
 
-    -- 5. SCROLL AREA
-    local scroll = Instance.new("ScrollingFrame", mainFrame)
-    scroll.Size = UDim2.new(0.9, 0, 0, 130)
-    scroll.Position = UDim2.new(0.05, 0, 0.42, 0)
-    scroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-    scroll.BorderColor3 = Color3.fromRGB(25, 25, 25)
-    scroll.ScrollBarThickness = 2
-    scroll.ScrollBarImageColor3 = Color_Purple
+    -- FOOTER
+    local Footer = Instance.new("TextLabel", MainCard)
+    Footer.Size = UDim2.new(1, 0, 0, 30)
+    Footer.Position = UDim2.new(0, 0, 1, -30)
+    Footer.Text = "OWNED BY PAULO"
+    Footer.TextColor3 = Color3.fromRGB(30, 30, 30)
+    Footer.Font = Enum.Font.Code
+    Footer.TextSize = 11
+    Footer.BackgroundTransparency = 1
 
-    local listLayout = Instance.new("UIListLayout", scroll)
-    listLayout.Padding = UDim.new(0, 5)
+    -- 2. BOTÃO TOGGLE (O BOTÃO DE BAIXO)
+    local ToggleBtn = Instance.new("TextButton", sg)
+    ToggleBtn.Size = UDim2.new(0, 180, 0, 35)
+    ToggleBtn.Position = UDim2.new(0.5, -90, 1, -50)
+    ToggleBtn.BackgroundColor3 = Color_Black
+    ToggleBtn.BorderColor3 = Color_Dark_Border
+    ToggleBtn.BorderSizePixel = 2
+    ToggleBtn.Text = "COPO KAITUN"
+    ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.TextSize = 13
 
-    -- 6. FOOTER
-    local footer = Instance.new("TextLabel", mainFrame)
-    footer.Size = UDim2.new(1, 0, 0, 40)
-    footer.Position = UDim2.new(0, 0, 1, -40)
-    footer.BackgroundTransparency = 1
-    footer.Text = "MADE BY: <font color='#2ecc71'>LIMAO</font>"
-    footer.RichText = true
-    footer.TextColor3 = Color3.fromRGB(70, 70, 70)
-    footer.Font = Enum.Font.GothamBold
-    footer.TextSize = 10
+    -- Lógica de Abrir/Fechar
+    ToggleBtn.MouseButton1Click:Connect(function()
+        MainHolder.Visible = not MainHolder.Visible
+        ToggleBtn.BorderColor3 = MainHolder.Visible and Color_Ocean or Color_Dark_Border
+    end)
 
-    -- Lógica de Update
-    UI.Refresh = function()
-        for _, v in pairs(scroll:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
-        
-        local data = UI.Inventory[CurrentTab]
-        for _, item in pairs(data) do
-            local row = Instance.new("Frame", scroll)
-            row.Size = UDim2.new(1, -10, 0, 25)
-            row.BackgroundTransparency = 1
-            
-            local txt = Instance.new("TextLabel", row)
-            txt.Size = UDim2.new(1, 0, 1, 0)
-            txt.BackgroundTransparency = 1
-            txt.Font = Enum.Font.GothamSemibold
-            txt.TextSize = 11
-            txt.TextColor3 = Color3.new(1,1,1)
-            txt.TextXAlignment = "Left"
+UI.Status = {
+    Main = "Iniciando...",
+    Sub = "Aguardando..."
+}
 
-            if CurrentTab == "Melees" then
-                local mastery = item.Mastery or 0
-                local color = mastery >= 400 and "#2ecc71" or "#e74c3c"
-                txt.Text = "  " .. item.Name .. " <font color='"..color.."'>["..mastery.."/400]</font>"
-            else
-                txt.Text = "  " .. tostring(item) .. " <font color='#2ecc71'>✓</font>"
-            end
-            txt.RichText = true
-        end
+-- Criar as Labels na UI para mostrar o que o script está fazendo
+local MainLabel = Instance.new("TextLabel", TaskBox)
+MainLabel.Size = UDim2.new(1, 0, 0.5, 0)
+MainLabel.BackgroundTransparency = 1
+MainLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+MainLabel.Text = UI.Status.Main
+
+-- Loop para atualizar o texto na tela
+task.spawn(function()
+    while task.wait(0.5) do
+        MainLabel.Text = UI.Status.Main
     end
+end)
 
+    -- Loop de Atualização de Dados
     task.spawn(function()
-        while task.wait(0.5) do
-            mTask.Text = "Main Task: <font color='#2ecc71'>" .. UI.Status.Main .. "</font>"
-            sTask.Text = "Sub Task: <font color='#2ecc71'>" .. UI.Status.Sub .. "</font>"
+        while task.wait(1) do
+            pcall(function()
+                local data = player:FindFirstChild("Data") or player
+                stLvl.Text = "Level: <font color='#ffffff'>" .. (player.Data.Level.Value) .. "</font>"
+                stBeli.Text = "Beli: <font color='#ffffff'>" .. (player.Data.Beli.Value) .. "</font>"
+                stFrag.Text = "Frag: <font color='#ffffff'>" .. (player.Data.Fragments.Value) .. "</font>"
+                stRace.Text = "Race: <font color='#ffffff'>" .. (player.Data.Race.Value) .. "</font>"
+            end)
         end
     end)
 end
 
+UI.Init()
 return UI
