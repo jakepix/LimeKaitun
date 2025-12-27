@@ -2,44 +2,94 @@ local Funcs = {}
 local player = game.Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 
--- [[ MOVIMENTAÇÃO ULTRA RÁPIDA ]]
-function Funcs.Tween(target)
+-- Configurações para preços e valores
+local Config = {
+    StylePrice = 2000000,
+    GodhumanPrice = 5000000,
+    GodhumanFragmentsRequired = 5000,
+    RequiredFragmentsForRaid = 5000,
+    FruitForRaid = "Bomb Fruit", -- fruta lixo para usar em raid
+}
+
+-- Função para chamadas remotas com retry simples
+local function safeInvokeServer(remote, ...)
+    local attempts = 3
+    local args = {...}
+    for i=1, attempts do
+        local success, result = pcall(function()
+            return remote:InvokeServer(unpack(args))
+        end)
+        if success then
+            return result
+        else
+            task.wait(0.3)
+        end
+    end
+    warn("Falha na chamada remota: ".. tostring(remote))
+    return nil
+end
+
+local function safeFireServer(remote, ...)
+    local attempts = 3
+    local args = {...}
+    for i=1, attempts do
+        local success, _ = pcall(function()
+            remote:FireServer(unpack(args))
+        end)
+        if success then
+            return true
+        else
+            task.wait(0.3)
+        end
+    end
+    warn("Falha na FireServer: ".. tostring(remote))
+    return false
+end
+
+-- [[ MOVIMENTAÇÃO INTELIGENTE ]]
+function Funcs.SmartTween(targetCFrame)
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
     local hrp = player.Character.HumanoidRootPart
-    local bv = hrp:FindFirstChild("KaitunBV") or Instance.new("BodyVelocity", hrp)
-    bv.Name = "KaitunBV"
-    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     
     for _, v in pairs(player.Character:GetDescendants()) do
         if v:IsA("BasePart") then v.CanCollide = false end
     end
-    
-    bv.Velocity = (target.Position - hrp.Position).Unit * 350
-    if (hrp.Position - target.Position).Magnitude < 10 then 
-        bv.Velocity = Vector3.zero 
+
+    if (hrp.Position - targetCFrame.Position).Magnitude > 150 then
+        hrp.CFrame = CFrame.new(hrp.Position.X, targetCFrame.Y + 100, hrp.Position.Z)
+        task.wait(0.1)
     end
+    hrp.CFrame = targetCFrame
 end
 
--- [[ FAST ATTACK (SEM DELAY) ]]
+-- [[ FAST ATTACK & EQUIP ]]
 function Funcs.FastAttack()
-    local tool = player.Character:FindFirstChildOfClass("Tool")
+    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
     if tool then
-        RS.Modules.Net["RE/RegisterAttack"]:FireServer(0) 
-        RS.Modules.Net["RE/RegisterHit"]:FireServer(nil, {}, nil, "40763608")
+        local attackRemote = RS.Modules.Net["RE/RegisterAttack"]
+        local hitRemote = RS.Modules.Net["RE/RegisterHit"]
+        safeFireServer(attackRemote, 0)
+        safeFireServer(hitRemote, nil, {}, nil, "40763608")
     end
 end
 
--- [[ HITBOX GIGANTE E BRING ]]
-function Funcs.BringMobs(name, pos)
-    for _, v in pairs(workspace.Enemies:GetChildren()) do
-        if v.Name:find(name) and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-            v.HumanoidRootPart.CanCollide = false
-            v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-            v.HumanoidRootPart.CFrame = pos
-            v.Humanoid.WalkSpeed = 0
-            v.Humanoid.PlatformStand = true
+function Funcs.EquipBest()
+    local tool = player.Backpack and player.Backpack:FindFirstChildOfClass("Tool")
+    if tool and (tool.ToolTip == "Melee" or tool.ToolTip == "Sword") then
+        player.Character.Humanoid:EquipTool(tool)
+    end
+end
+
+-- [[ SISTEMA DE ELITE (YAMA/CDK) ]]
+function Funcs.AutoElite()
+    local elites = {"Deandre", "Diablo", "Urban"}
+    for _, name in pairs(elites) do
+        local e = workspace.Enemies and workspace.Enemies:FindFirstChild(name)
+        if e and e:FindFirstChild("Humanoid") and e.Humanoid.Health > 0 then
+            return e
         end
     end
+    return nil
 end
 
 function Funcs.BringBoss(bossObj)
@@ -52,264 +102,151 @@ function Funcs.BringBoss(bossObj)
     end
 end
 
+-- [[ BRING MOBS & HITBOX ]]
+function Funcs.BringMobs(name, pos)
+    if not workspace.Enemies then return end
+    for _, v in pairs(workspace.Enemies:GetChildren()) do
+        if v.Name:find(name) and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+            v.HumanoidRootPart.CanCollide = false
+            v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
+            v.HumanoidRootPart.CFrame = pos
+            v.Humanoid.WalkSpeed = 0
+        end
+    end
+end
+
+-- [[ AUTO STATS ]]
+function Funcs.AutoStats()
+    local stats = {"Melee", "Defense", "Blox Fruit"}
+    local points = player.Data and player.Data.StatsPoints and player.Data.StatsPoints.Value or 0
+    if points > 0 then
+        local perStat = math.floor(points / #stats)
+        for _, stat in pairs(stats) do
+            local remote = RS.Remotes.CommF_
+            safeInvokeServer(remote, "AddPoint", stat, perStat)
+        end
+    end
+end
+
 -- [[ VERIFICADORES DE PROGRESSO ]]
-function Funcs.HasRaceV2()
-    return RS.Remotes.CommF_:InvokeServer("Alchemist","Check") == "Finished"
-end
-
-function Funcs.BartiloFinished()
-    return RS.Remotes.CommF_:InvokeServer("BartiloQuestProgress","Bartilo") == 3
-end
-
-function Funcs.DonSwanDefeated()
-    return RS.Remotes.CommF_:InvokeServer("GetDonSwanQuest") == "Finished"
-end
-
 function Funcs.HasStyle(styleName)
-    local s = RS.Remotes.CommF_:InvokeServer("Buy" .. styleName:gsub(" ", ""), "Check")
+    local remote = RS.Remotes.CommF_
+    local s = safeInvokeServer(remote, "Buy" .. styleName:gsub(" ", ""), "Check")
     return s == "Already Learned"
 end
 
--- [[ QUEST DON SWAN ]]
-function Funcs.KillDonSwan()
-    -- Tenta dar a fruta de 1M+ para o Trevor
-    RS.Remotes.CommF_:InvokeServer("BuyDonSwanAccess")
-    local swan = workspace.Enemies:FindFirstChild("Don Swan")
-    if swan then
-        Funcs.BringBoss(swan)
-        Funcs.FastAttack()
+function Funcs.BuyStyle(styleName)
+    if Funcs.HasStyle(styleName) then return true end
+    local money = player.Data and player.Data.Money and player.Data.Money.Value or 0
+    if money >= Config.StylePrice then
+        local remote = RS.Remotes.CommF_
+        safeInvokeServer(remote, "Buy" .. styleName:gsub(" ", ""), "Buy")
+        task.wait(1)
+        return true
     else
-        Funcs.Tween(CFrame.new(2289, 15, 863)) -- Pos do Boss
+        return false
     end
 end
 
--- [[ QUESTS V3 POR RAÇA ]]
-function Funcs.V3_Human()
-    local bosses = {"Diamond", "Jeremy", "Fajita"}
-    for _, name in pairs(bosses) do
-        local b = workspace.Enemies:FindFirstChild(name)
-        if b and b.Humanoid.Health > 0 then
-            Funcs.BringBoss(b)
-            Funcs.FastAttack()
-            return
+function Funcs.UseFruitForRaid()
+    local fragments = player.Data and player.Data.Fragments and player.Data.Fragments.Value or 0
+    if fragments >= Config.RequiredFragmentsForRaid then return false end
+
+    local fruit = player.Backpack:FindFirstChild(Config.FruitForRaid) or player.Character:FindFirstChild(Config.FruitForRaid)
+    if fruit then
+        local remote = RS.Remotes.CommF_
+        safeInvokeServer(remote, "RaidsEntity", "Select", "Flame")
+        safeInvokeServer(remote, "RaidsEntity", "Buy", 1)
+        safeInvokeServer(remote, "RaidsEntity", "Start")
+        return true
+    end
+    return false
+end
+
+function Funcs.EquipStyle(style)
+    local tool = nil
+    for _, t in pairs(player.Backpack:GetChildren()) do
+        if t:IsA("Tool") and t.ToolTip == style then
+            tool = t
+            break
         end
     end
+    if tool and player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid:EquipTool(tool)
+    end
 end
 
-function Funcs.V3_Mink()
-    for _, v in pairs(workspace:GetChildren()) do
-        if v.Name:find("Chest") then
-            player.Character.HumanoidRootPart.CFrame = v.CFrame
-            task.wait(0.1)
+-- Agora sem loop infinito interno
+function Funcs.FarmLevelAndMastery(Data, UI)
+    -- Você deve chamar essa função repetidamente de fora para controle do loop
+    local fightingStyles = {"Dark Step", "Electric Claw", "Water Kung Fu", "Dragon Breath", "Death Step", "Sharkman Karate", "Dragon Talon"}
+    local currentStyleIndex = 1
+    local godhumanPrice = Config.GodhumanPrice
+    local godhumanFragmentsRequired = Config.GodhumanFragmentsRequired
+
+    local playerLevel = player.Data.Level.Value
+    local statsPoints = player.Data.StatsPoints.Value
+    local money = player.Data.Money.Value
+    local fragments = player.Data.Fragments.Value
+
+    local currentStyle = fightingStyles[currentStyleIndex]
+
+    if not Funcs.HasStyle(currentStyle) then
+        if money >= Config.StylePrice then
+            UI.Status.Main = "Comprando estilo: " .. currentStyle
+            Funcs.BuyStyle(currentStyle)
+            task.wait(2)
+        else
+            UI.Status.Main = "Sem dinheiro para comprar estilo " .. currentStyle
+            if Funcs.UseFruitForRaid() then
+                UI.Status.Main = "Fazendo raid para farmar fragments"
+                task.wait(15)
+            end
         end
-    end
-end
-
-function Funcs.V3_Fishman()
-    local sb = workspace:FindFirstChild("Sea Beast")
-    if sb then
-        Funcs.BringBoss(sb)
-        Funcs.FastAttack()
+        return currentStyleIndex
     else
-        -- Voa no mar aberto para spawnar
-        Funcs.Tween(CFrame.new(player.Character.HumanoidRootPart.Position.X, 100, player.Character.HumanoidRootPart.Position.Z + 5000))
-    end
-end
+        Funcs.EquipStyle(currentStyle)
 
-function Funcs.V3_Angel()
-    -- Mata o Diamond (Boss) como alternativa ou um player
-    local boss = workspace.Enemies:FindFirstChild("Diamond")
-    if boss then
-        Funcs.BringBoss(boss)
-        Funcs.FastAttack()
-    end
-end
+        local mastery = safeInvokeServer(RS.Remotes.CommF_, "Buy" .. currentStyle:gsub(" ", ""), "CheckMastery") or 0
+        UI.Status.Main = "Farmando estilo: " .. currentStyle .. " Maestria: " .. mastery .. "/400"
 
--- [[ AUTO RAID ]]
-function Funcs.AutoRaid()
-    if not workspace:FindFirstChild("RaidMap") then
-        local chipPos = (game.PlaceId == 4442272183) and CFrame.new(-6415, 250, -4493) or CFrame.new(-5415, 312, -2825)
-        Funcs.Tween(chipPos)
-        RS.Remotes.CommF_:InvokeServer("RaidsEntity","Select","Flame")
-        RS.Remotes.CommF_:InvokeServer("RaidsEntity","Buy",1)
-        RS.Remotes.CommF_:InvokeServer("RaidsEntity","Start")
-    else
-        for _, enemy in pairs(workspace.Enemies:GetChildren()) do
-            if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                Funcs.Tween(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 30, 0))
-                Funcs.BringBoss(enemy)
-                Funcs.FastAttack()
+        if mastery >= 400 then
+            currentStyleIndex = currentStyleIndex + 1
+            if currentStyleIndex > #fightingStyles then
+                currentStyleIndex = 1
+            end
+        end
+
+        if statsPoints > 0 then
+            Funcs.AutoStats()
+        end
+
+        if money >= godhumanPrice and fragments >= godhumanFragmentsRequired then
+            if not Funcs.HasStyle("Godhuman") then
+                UI.Status.Main = "Comprando Godhuman"
+                safeInvokeServer(RS.Remotes.CommF_, "BuyGodhuman", "Buy")
+                task.wait(5)
+            end
+        elseif fragments < godhumanFragmentsRequired then
+            if Funcs.UseFruitForRaid() then
+                UI.Status.Main = "Fazendo raid para farmar fragments"
+                task.wait(15)
             end
         end
     end
+    return currentStyleIndex
 end
 
--- [[ QUEST DO SABER (SEA 1) ]]
-
-function Funcs.SaberQuest()
-
-    UI.Status.Main = "QUEST: SABER EXPERT"
-
-    -- 1. Ativa os 5 botões da Jungle (Bypass)
-
-    local buttons = {
-
-        CFrame.new(-1611, 35, 149), CFrame.new(-1526, 38, 30),
-
-        CFrame.new(-1382, 35, -485), CFrame.new(-1670, 35, -3),
-
-        CFrame.new(-1564, 35, -127)
-
-    }
-
-    for _, btn in pairs(buttons) do
-
-        player.Character.HumanoidRootPart.CFrame = btn
-
-        task.wait(0.2)
-
-    end
-
-    -- 2. Pega a Tocha e vai pro Deserto
-
-    Funcs.Tween(CFrame.new(-1610, 12, 163)) -- Local da Tocha
-
-    task.wait(0.5)
-
-    Funcs.Tween(CFrame.new(1113, 5, 4349)) -- Casa no Deserto
-
-    -- 3. Mata o Boss (Saber Expert) se tiver lvl 200
-
-    if player.Data.Level.Value >= 200 then
-
-        local boss = workspace.Enemies:FindFirstChild("Saber Expert")
-
-        if boss then
-
-            Funcs.BringBoss(boss)
-
-            Funcs.FastAttack()
-
-        end
-
-    end
-
-end
-
-
-
--- [[ QUEST DO BARTILO (SEA 2) ]]
-
-function Funcs.BartiloQuest()
-
-    UI.Status.Main = "QUEST: BARTILO"
-
-    -- 1. Mata 50 Swan Pirates
-
-    local quest = RS.Remotes.CommF_:InvokeServer("BartiloQuestProgress","Bartilo")
-
-    if quest == 0 then
-
-        RS.Remotes.CommF_:InvokeServer("StartQuest","BartiloQuest",1)
-
-        Funcs.BringMobs("Swan Pirate", CFrame.new(878, 122, 1235))
-
-        Funcs.FastAttack()
-
-    -- 2. Mata o Jeremy
-
-    elseif quest == 1 then
-
-        local jeremy = workspace.Enemies:FindFirstChild("Jeremy")
-
-        if jeremy then 
-
-            Funcs.BringBoss(jeremy) 
-
-            Funcs.FastAttack() 
-
-        end
-
-    -- 3. Libera os Gladiadores (Código do Coliseu)
-
-    elseif quest == 2 then
-
-        local code = {"Y", "infinity", "C", "S", "M", "F", "N", "B"}
-
-        for _, name in pairs(code) do
-
-            local plate = workspace.Birdy:FindFirstChild(name)
-
-            if plate then
-
-                player.Character.HumanoidRootPart.CFrame = plate.CFrame
-
-                task.wait(0.3)
-
-            end
-
-        end
-
-    end
-
-end
-
-
-
--- [[ QUEST DO CITIZEN (SEA 3)]]
-
-function Funcs.CitizenQuest()
-
-    UI.Status.Main = "QUEST: CITIZEN"
-
-    -- 1. Mata 50 Forest Pirates
-
-    RS.Remotes.CommF_:InvokeServer("StartQuest","CitizenQuest",1)
-
-    Funcs.BringMobs("Forest Pirate", CFrame.new(-13333, 483, -7853))
-
-    Funcs.FastAttack()
-
-    
-
-    -- 2. Mata o Capitão Elephant
-
-    local boss = workspace.Enemies:FindFirstChild("Captain Elephant")
-
-    if boss then
-
-        Funcs.BringBoss(boss)
-
-        Funcs.FastAttack()
-
-    end
-
-end
-
-
-
--- [[ AUTO V2 E V3 ]]
-
-function Funcs.AutoRaceV2()
-
-    UI.Status.Main = "BUSCANDO FLORES (V2)"
-
-    -- O script varre os pontos de spawn de flores usando a lista do Data.lua
-
-    for i, flowerPos in pairs(Data.RaceConfig.Flowers.Red) do
-
-        Funcs.Tween(flowerPos)
-
-        task.wait(0.1) -- Seu PC é rápido, não precisa de mais que isso
-
-    end
-
-    -- Entrega pro Alchemist
-
-    Funcs.Tween(Data.RaceConfig.Alchemist)
-
-    RS.Remotes.CommF_:InvokeServer("Alchemist","Finish")
-
-end
+-- Funções placeholder para implementar depois
+function Funcs.BartiloFinished() print("Implementar BartiloFinished") return false end
+function Funcs.BartiloQuest() print("Implementar BartiloQuest") end
+function Funcs.HasRaceV2() print("Implementar HasRaceV2") return false end
+function Funcs.AutoRaceV2() print("Implementar AutoRaceV2") end
+function Funcs.DonSwanDefeated() print("Implementar DonSwanDefeated") return false end
+function Funcs.KillDonSwan() print("Implementar KillDonSwan") end
+function Funcs.V3_Human() print("Implementar V3_Human") end
+function Funcs.V3_Mink() print("Implementar V3_Mink") end
+function Funcs.V3_Fishman() print("Implementar V3_Fishman") end
+function Funcs.V3_Angel() print("Implementar V3_Angel") end
 
 return Funcs
